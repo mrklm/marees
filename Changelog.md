@@ -7,6 +7,14 @@ MAJEUR.MINEUR.CORRECTIF
 
 ---
 
+## [0.1.1] - 2026-02-26
+
+### Modifié
+
+ - La localité n'est plus Cancale par defaut, il faut remplir le champ
+
+---
+
 ## [0.1.0] - 2026-02-26
 
 ### Ajouté

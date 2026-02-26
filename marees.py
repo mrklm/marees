@@ -15,7 +15,7 @@ from tkinter import ttk, messagebox, filedialog
 # ------------------------------------------------------------------
 
 __APP_NAME__ = "TideBuilder"
-__VERSION__ = "0.1.0"
+__VERSION__ = "0.1.1"
 
 
 MONTHS_FR = {
@@ -137,6 +137,51 @@ def slugify(text: str) -> str:
     t = "".join(c for c in t if not unicodedata.combining(c))
     t = re.sub(r"[^a-z0-9]+", "_", t).strip("_")
     return t or "localite"
+
+def detect_locality_from_raw(raw: str) -> str | None:
+    """
+    Tente d'extraire la localité depuis un bloc collé (texte ou HTML).
+    Retourne None si rien de fiable n'est trouvé.
+    """
+    s = raw.strip()
+    if not s:
+        return None
+
+    # 1) HTML: essayer <title>...</title>
+    m = re.search(r"<title[^>]*>(.*?)</title>", s, flags=re.IGNORECASE | re.DOTALL)
+    if m:
+        title = m.group(1)
+        title = htmlmod.unescape(title)
+        title = re.sub(r"\s+", " ", title).strip()
+
+        # Chercher "Marées <Localité>" dans le title
+        mt = re.search(
+            r"mar[ée]es?\s*(?:de|d'|à|a)?\s*([A-Za-zÀ-ÖØ-öø-ÿ' -]{2,60})",
+            title,
+            flags=re.IGNORECASE,
+        )
+        if mt:
+            loc = mt.group(1)
+            loc = re.sub(r"\b(20\d{2}|\d{4})\b", "", loc).strip()
+            loc = re.sub(r"\s+", " ", loc).strip(" -")
+            if loc:
+                return loc
+
+    # 2) Texte/HTML brut: chercher "Marée(s) <Localité>" n'importe où
+    mt2 = re.search(
+        r"mar[ée]es?\s*(?:de|d'|à|a)?\s*([A-Za-zÀ-ÖØ-öø-ÿ' -]{2,60})",
+        s,
+        flags=re.IGNORECASE,
+    )
+    if mt2:
+        loc = mt2.group(1)
+        loc = htmlmod.unescape(loc)
+        loc = re.sub(r"\b(20\d{2}|\d{4})\b", "", loc).strip()
+        loc = re.sub(r"\s+", " ", loc).strip(" -")
+        if loc:
+            return loc
+
+    return None
 
 
 def parse_float_m(value: str) -> float:
@@ -606,7 +651,7 @@ def verify_dataset(year: int, by_month: dict[int, list[TideEvent]]) -> tuple[lis
 class TideBuilderApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title(f"Fabriqueur de fichiers marées (.txt HorlogeLune) — v{__VERSION__}")
+        self.title(f"Fabriqueur de fichiers marées.txt— v{__VERSION__}")
         self.geometry("980x820")
 
         # --- Plateforme (tu avais ce bloc) ---
@@ -637,7 +682,7 @@ class TideBuilderApp(tk.Tk):
         top.pack(fill="x")
 
         ttk.Label(top, text="Localité :").grid(row=0, column=0, sticky="w")
-        self.var_locality = tk.StringVar(value="Cancale")
+        self.var_locality = tk.StringVar(value="")
         self.entry_locality = ttk.Entry(top, textvariable=self.var_locality, width=30)
         self.entry_locality.grid(row=0, column=1, sticky="w", padx=(6, 18))
 
@@ -855,6 +900,19 @@ class TideBuilderApp(tk.Tk):
         if not raw:
             messagebox.showwarning("Données vides", "Veuillez coller des données de marée avant d'importer.")
             return
+        
+        locality = self.var_locality.get().strip()
+        if not locality:
+            guessed = detect_locality_from_raw(raw)
+            if guessed:
+                self.var_locality.set(guessed)
+                locality = guessed
+            else:
+                messagebox.showwarning(
+                    "Localité manquante",
+                    "Veuillez saisir une localité avant d'importer (ex: Cancale)."
+                )
+                return
 
         is_html = (
             "<div" in raw
