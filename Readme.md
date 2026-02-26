@@ -2,7 +2,7 @@
 
 Générateur de fichiers annuels de marées au format compatible **HorlogeLune**.
 
-TideBuilder permet de transformer des données brutes (copiées depuis un site web ou issues du code source HTML) en un fichier texte structuré, vérifié et prêt à être utilisé dans un projet Arduino / HorlogeLune.
+Marées permet de transformer des données brutes (copiées depuis un site web ou issues du code source HTML) en un fichier texte structuré, vérifié et prêt à être utilisé dans un projet Arduino / HorlogeLune.
 
 ## Aperçu
 
